@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Listings</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Student Listings</h1>
+    <p class="sub">Find a place near campus, or post one. Front end for the Spring Boot + PostgreSQL Listings API.</p>
+  </header>
+
+
+  <main>
+    <div id="demo-banner" class="banner" hidden>
+      Demo mode: no API is reachable, so listings are saved in your browser only.
+      Run <code>./mvnw spring-boot:run</code> and open <code>localhost:8080</code> to use the real database.
+    </div>
+    <section class="card">
+      <h2>Post a listing</h2>
+      <form id="add-form" novalidate>
+        <label>Address
+          <input name="address" required maxlength="200" placeholder="75 Laurier Ave E, Ottawa">
+        </label>
+        <div class="row">
+          <label>Monthly rent ($)
+            <input name="monthlyRent" type="number" min="0" step="1" required placeholder="950">
+          </label>
+          <label>Bedrooms
+            <input name="bedrooms" type="number" min="0" step="1" required placeholder="1">
+          </label>
+        </div>
+        <button type="submit">Add listing</button>
+        <p id="form-error" class="error" role="alert"></p>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="list-head">
+        <h2>Listings <span id="count" class="count"></span></h2>
+        <form id="filter-form" class="filter">
+          <label>Max rent
+            <input name="maxRent" type="number" min="0" step="1" placeholder="Any">
+          </label>
+          <button type="submit">Filter</button>
+          <button type="button" id="clear-filter" class="ghost">Clear</button>
+        </form>
+      </div>
+      <p id="list-error" class="error" role="alert"></p>
+      <ul id="listings" class="listings"></ul>
+      <p id="empty" class="empty" hidden>No listings match. Try a higher max rent, or post one.</p>
+    </section>
+  </main>
+
+  <footer>
+    <a href="https://github.com/iliass-elguaari/spring-boot-listings-api">Source on GitHub</a>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
