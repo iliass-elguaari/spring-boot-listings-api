@@ -4,12 +4,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,5 +78,37 @@ class ListingControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(repository, never()).save(any(Listing.class));
+    }
+
+    @Test
+    void getByIdReturnsListing() throws Exception {
+        when(repository.findById(1L)).thenReturn(Optional.of(listing("75 Laurier Ave E", 950, 1)));
+
+        mvc.perform(get("/listings/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bedrooms").value(1));
+    }
+
+    @Test
+    void getByIdReturns404WhenMissing() throws Exception {
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        mvc.perform(get("/listings/99")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteRemovesListing() throws Exception {
+        when(repository.existsById(1L)).thenReturn(true);
+
+        mvc.perform(delete("/listings/1")).andExpect(status().isNoContent());
+        verify(repository).deleteById(1L);
+    }
+
+    @Test
+    void deleteReturns404WhenMissing() throws Exception {
+        when(repository.existsById(99L)).thenReturn(false);
+
+        mvc.perform(delete("/listings/99")).andExpect(status().isNotFound());
+        verify(repository, never()).deleteById(any());
     }
 }
