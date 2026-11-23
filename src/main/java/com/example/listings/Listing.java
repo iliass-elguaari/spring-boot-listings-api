@@ -4,6 +4,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 
 
@@ -13,8 +16,14 @@ public class Listing {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id 
     private Long id;
+    @NotBlank(message = "address is required")
+    @Size(max = 200, message = "address must be at most 200 characters")
     private String address;
+
+    @Min(value = 0, message = "monthlyRent cannot be negative")
     private int monthlyRent;
+
+    @Min(value = 0, message = "bedrooms cannot be negative")
     private int bedrooms;
     
     public Long getId() {
@@ -33,7 +42,6 @@ public class Listing {
         return monthlyRent;
     }
     public void setMonthlyRent(int monthlyRent) {
-        if (monthlyRent<0) throw new IllegalArgumentException("Cant be negative !");
         this.monthlyRent = monthlyRent;
     }
     public int getBedrooms() {
