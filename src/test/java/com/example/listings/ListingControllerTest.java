@@ -70,14 +70,50 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.address").value("75 Laurier Ave E"));
     }
 
+    private void expectRejected(String json, String field, String message) throws Exception {
+        mvc.perform(post("/listings").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors." + field).value(message));
+        verify(repository, never()).save(any(Listing.class));
+    }
+
     @Test
     void postRejectsNegativeRent() throws Exception {
-        mvc.perform(post("/listings")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"address\":\"Nowhere\",\"monthlyRent\":-5,\"bedrooms\":1}"))
-                .andExpect(status().isBadRequest());
+        expectRejected("{\"address\":\"Nowhere\",\"monthlyRent\":-5,\"bedrooms\":1}",
+                "monthlyRent", "monthlyRent cannot be negative");
+    }
 
-        verify(repository, never()).save(any(Listing.class));
+    @Test
+    void postRejectsNegativeBedrooms() throws Exception {
+        expectRejected("{\"address\":\"75 Laurier Ave E\",\"monthlyRent\":950,\"bedrooms\":-1}",
+                "bedrooms", "bedrooms cannot be negative");
+    }
+
+    @Test
+    void postRejectsBlankAddress() throws Exception {
+        expectRejected("{\"address\":\"   \",\"monthlyRent\":950,\"bedrooms\":1}",
+                "address", "address is required");
+    }
+
+    @Test
+    void postRejectsMissingAddress() throws Exception {
+        expectRejected("{\"monthlyRent\":950,\"bedrooms\":1}",
+                "address", "address is required");
+    }
+
+    @Test
+    void postRejectsTooLongAddress() throws Exception {
+        String longAddress = "a".repeat(201);
+        expectRejected("{\"address\":\"" + longAddress + "\",\"monthlyRent\":950,\"bedrooms\":1}",
+                "address", "address must be at most 200 characters");
+    }
+
+    @Test
+    void postReportsEveryInvalidField() throws Exception {
+        mvc.perform(post("/listings").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"address\":\"\",\"monthlyRent\":-1,\"bedrooms\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.length()").value(3));
     }
 
     @Test
