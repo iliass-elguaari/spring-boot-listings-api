@@ -27,10 +27,15 @@ function demoSave(list) {
 }
 
 // ---- API calls with demo fallback ----
-async function fetchListings(maxRent) {
+// filters: { maxRent, minBedrooms }, each a number or null
+async function fetchListings(filters) {
+  const { maxRent, minBedrooms } = filters;
   if (!demo) {
     try {
-      const url = maxRent == null ? API : `${API}?maxRent=${encodeURIComponent(maxRent)}`;
+      const params = new URLSearchParams();
+      if (maxRent != null) params.set("maxRent", maxRent);
+      if (minBedrooms != null) params.set("minBedrooms", minBedrooms);
+      const url = params.toString() ? `${API}?${params}` : API;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       const type = res.headers.get("content-type") || "";
       if (res.ok && type.includes("application/json")) return await res.json();
@@ -41,7 +46,9 @@ async function fetchListings(maxRent) {
     }
   }
   const all = demoLoad();
-  return maxRent == null ? all : all.filter((l) => l.monthlyRent <= maxRent);
+  return all.filter((l) =>
+    (maxRent == null || l.monthlyRent <= maxRent) &&
+    (minBedrooms == null || l.bedrooms >= minBedrooms));
 }
 
 // Error carrying the API's per-field messages, e.g. { monthlyRent: "monthlyRent cannot be negative" }
@@ -92,7 +99,7 @@ async function deleteListing(id) {
 }
 
 // ---- form state ----
-let currentMax = null;
+let filters = { maxRent: null, minBedrooms: null };
 let editingId = null;
 
 function showFieldErrors(fields) {
@@ -136,7 +143,7 @@ async function render() {
   $("list-error").textContent = "";
   let list;
   try {
-    list = await fetchListings(currentMax);
+    list = await fetchListings(filters);
   } catch (e) {
     $("list-error").textContent = e.message;
     return;
@@ -222,14 +229,20 @@ $("cancel-edit").addEventListener("click", stopEdit);
 
 $("filter-form").addEventListener("submit", (e) => {
   e.preventDefault();
-  const v = e.target.maxRent.value;
-  currentMax = v === "" ? null : Number(v);
+  const read = (input) => (input.value === "" ? null : Number(input.value));
+  const maxRent = read(e.target.maxRent);
+  const minBedrooms = read(e.target.minBedrooms);
+  if ((maxRent != null && maxRent < 0) || (minBedrooms != null && minBedrooms < 0)) {
+    $("list-error").textContent = "Filters cannot be negative.";
+    return;
+  }
+  filters = { maxRent, minBedrooms };
   render();
 });
 
 $("clear-filter").addEventListener("click", () => {
   $("filter-form").reset();
-  currentMax = null;
+  filters = { maxRent: null, minBedrooms: null };
   render();
 });
 
