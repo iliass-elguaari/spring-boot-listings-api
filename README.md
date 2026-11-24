@@ -7,6 +7,7 @@ A small REST API for student housing listings, built to learn Spring Boot and Po
 - `GET /listings` returns all listings
 - `GET /listings?maxRent=1000` returns listings at or under a rent
 - `GET /listings/{id}` returns one listing, or `404 Not Found`
+- `PUT /listings/{id}` replaces a listing's address, rent and bedrooms (same validation as `POST`), or `404 Not Found`
 - `DELETE /listings/{id}` removes a listing (`204 No Content`), or `404 Not Found`
 - Validates every new listing and answers `400 Bad Request` with one message per bad field:
   - `address` is required and at most 200 characters
@@ -17,7 +18,7 @@ A small REST API for student housing listings, built to learn Spring Boot and Po
   ```
 
 ## Front end
-A small web page in `src/main/resources/static` lets you browse listings, filter by max rent, post a listing and delete one.
+A small web page in `src/main/resources/static` lets you browse listings, filter by max rent, post, edit and delete listings. Validation errors from the API show up under the field they belong to.
 - **With the API running**, open `localhost:8080` and it reads and writes the real Postgres database.
 - **Live demo:** https://iliass-elguaari.github.io/spring-boot-listings-api/ runs the same page without a server. It switches to demo mode and keeps listings in your browser.
 
