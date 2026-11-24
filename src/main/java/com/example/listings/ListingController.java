@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,6 +43,18 @@ public class ListingController {
     public ResponseEntity<Listing> getListing(@PathVariable Long id){
         return repository.findById(id)
                 .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Listing> updateListing(@PathVariable Long id, @Valid @RequestBody Listing changes){
+        return repository.findById(id)
+                .map(existing -> {
+                    existing.setAddress(changes.getAddress());
+                    existing.setMonthlyRent(changes.getMonthlyRent());
+                    existing.setBedrooms(changes.getBedrooms());
+                    return ResponseEntity.ok(repository.save(existing));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
