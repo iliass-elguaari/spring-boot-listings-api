@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 
 @RestController 
 @RequestMapping("/listings")
@@ -31,12 +33,22 @@ public class ListingController {
     }
 
 
-    @GetMapping 
-    public List<Listing> getListings(@RequestParam(required = false) Integer maxRent){
-        if (maxRent== null){
-            return repository.findAll();
+    // Both filters are optional and can be combined:
+    // GET /listings?maxRent=1000&minBedrooms=2
+    @GetMapping
+    public List<Listing> getListings(
+            @RequestParam(required = false) @Min(value = 0, message = "maxRent cannot be negative") Integer maxRent,
+            @RequestParam(required = false) @Min(value = 0, message = "minBedrooms cannot be negative") Integer minBedrooms){
+        if (maxRent != null && minBedrooms != null){
+            return repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(maxRent, minBedrooms);
         }
-        return repository.findByMonthlyRentLessThanEqual(maxRent);
+        if (maxRent != null){
+            return repository.findByMonthlyRentLessThanEqual(maxRent);
+        }
+        if (minBedrooms != null){
+            return repository.findByBedroomsGreaterThanEqual(minBedrooms);
+        }
+        return repository.findAll();
     }
 
     @GetMapping("/{id}")
@@ -80,6 +92,17 @@ public class ListingController {
         for (FieldError fe : e.getBindingResult().getFieldErrors()){
             errors.putIfAbsent(fe.getField(), fe.getDefaultMessage());
         }
+        return ResponseEntity.badRequest().body(Map.of("errors", errors));
+    }
+
+    // Same error shape for bad query parameters, e.g. {"errors": {"maxRent": "maxRent cannot be negative"}}
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<Map<String, Map<String, String>>> handleInvalidParams(HandlerMethodValidationException e){
+        Map<String, String> errors = new LinkedHashMap<>();
+        e.getParameterValidationResults().forEach(result -> {
+            String name = result.getMethodParameter().getParameterName();
+            result.getResolvableErrors().forEach(err -> errors.putIfAbsent(name, err.getDefaultMessage()));
+        });
         return ResponseEntity.badRequest().body(Map.of("errors", errors));
     }
 
