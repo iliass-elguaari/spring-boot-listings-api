@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -146,5 +147,41 @@ class ListingControllerTest {
 
         mvc.perform(delete("/listings/99")).andExpect(status().isNotFound());
         verify(repository, never()).deleteById(any());
+    }
+
+    @Test
+    void putUpdatesExistingListing() throws Exception {
+        Listing existing = listing("75 Laurier Ave E", 950, 1);
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.save(any(Listing.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        mvc.perform(put("/listings/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"address\":\"75 Laurier Ave E\",\"monthlyRent\":1000,\"bedrooms\":2}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.monthlyRent").value(1000))
+                .andExpect(jsonPath("$.bedrooms").value(2));
+    }
+
+    @Test
+    void putReturns404WhenMissing() throws Exception {
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        mvc.perform(put("/listings/99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"address\":\"Somewhere\",\"monthlyRent\":900,\"bedrooms\":1}"))
+                .andExpect(status().isNotFound());
+        verify(repository, never()).save(any(Listing.class));
+    }
+
+    @Test
+    void putRejectsInvalidChanges() throws Exception {
+        mvc.perform(put("/listings/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"address\":\"\",\"monthlyRent\":-1,\"bedrooms\":1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.address").value("address is required"))
+                .andExpect(jsonPath("$.errors.monthlyRent").value("monthlyRent cannot be negative"));
+        verify(repository, never()).save(any(Listing.class));
     }
 }
