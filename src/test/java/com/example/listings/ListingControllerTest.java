@@ -184,4 +184,34 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.monthlyRent").value("monthlyRent cannot be negative"));
         verify(repository, never()).save(any(Listing.class));
     }
+
+    @Test
+    void getFiltersByMinBedrooms() throws Exception {
+        when(repository.findByBedroomsGreaterThanEqual(2))
+                .thenReturn(List.of(listing("200 Rideau St", 1400, 2)));
+
+        mvc.perform(get("/listings").param("minBedrooms", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].bedrooms").value(2));
+    }
+
+    @Test
+    void getCombinesMaxRentAndMinBedrooms() throws Exception {
+        when(repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(1500, 2))
+                .thenReturn(List.of(listing("200 Rideau St", 1400, 2)));
+
+        mvc.perform(get("/listings").param("maxRent", "1500").param("minBedrooms", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].address").value("200 Rideau St"));
+        verify(repository, never()).findAll();
+    }
+
+    @Test
+    void getRejectsNegativeFilters() throws Exception {
+        mvc.perform(get("/listings").param("maxRent", "-1").param("minBedrooms", "-2"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.maxRent").value("maxRent cannot be negative"))
+                .andExpect(jsonPath("$.errors.minBedrooms").value("minBedrooms cannot be negative"));
+    }
 }
