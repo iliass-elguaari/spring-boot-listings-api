@@ -44,20 +44,42 @@ async function fetchListings(maxRent) {
   return maxRent == null ? all : all.filter((l) => l.monthlyRent <= maxRent);
 }
 
-async function addListing(listing) {
+// Error carrying the API's per-field messages, e.g. { monthlyRent: "monthlyRent cannot be negative" }
+class FieldErrors extends Error {
+  constructor(fields) {
+    super("Please fix the highlighted fields.");
+    this.fields = fields;
+  }
+}
+
+// Creates a listing, or updates it when an id is given.
+async function saveListing(listing, id) {
   if (demo) {
     const all = demoLoad();
-    const id = all.reduce((m, l) => Math.max(m, l.id), 0) + 1;
-    all.push({ id, ...listing });
+    if (id == null) {
+      const newId = all.reduce((m, l) => Math.max(m, l.id), 0) + 1;
+      all.push({ id: newId, ...listing });
+    } else {
+      const i = all.findIndex((l) => l.id === id);
+      if (i === -1) throw new Error("That listing no longer exists.");
+      all[i] = { id, ...listing };
+    }
     demoSave(all);
     return;
   }
-  const res = await fetch(API, {
-    method: "POST",
+  const res = await fetch(id == null ? API : `${API}/${id}`, {
+    method: id == null ? "POST" : "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(listing),
   });
-  if (!res.ok) throw new Error(res.status === 400 ? "The API rejected that listing." : `Server error (${res.status}).`);
+  if (res.ok) return;
+  if (res.status === 400) {
+    const body = await res.json().catch(() => null);
+    if (body && body.errors) throw new FieldErrors(body.errors);
+    throw new Error("The API rejected that listing.");
+  }
+  if (res.status === 404) throw new Error("That listing no longer exists.");
+  throw new Error(`Server error (${res.status}).`);
 }
 
 async function deleteListing(id) {
@@ -69,8 +91,46 @@ async function deleteListing(id) {
   if (!res.ok && res.status !== 404) throw new Error(`Could not delete (${res.status}).`);
 }
 
-// ---- rendering ----
+// ---- form state ----
 let currentMax = null;
+let editingId = null;
+
+function showFieldErrors(fields) {
+  for (const span of document.querySelectorAll(".field-error")) {
+    const name = span.dataset.for;
+    const msg = (fields && fields[name]) || "";
+    span.textContent = msg;
+    $("add-form")[name].setAttribute("aria-invalid", msg ? "true" : "false");
+  }
+}
+
+function startEdit(listing) {
+  editingId = listing.id;
+  const f = $("add-form");
+  f.address.value = listing.address;
+  f.monthlyRent.value = listing.monthlyRent;
+  f.bedrooms.value = listing.bedrooms;
+  $("form-title").textContent = "Edit listing";
+  $("submit-btn").textContent = "Save changes";
+  $("cancel-edit").hidden = false;
+  $("form-error").textContent = "";
+  showFieldErrors(null);
+  f.address.focus();
+  render();
+}
+
+function stopEdit() {
+  editingId = null;
+  $("add-form").reset();
+  $("form-title").textContent = "Post a listing";
+  $("submit-btn").textContent = "Add listing";
+  $("cancel-edit").hidden = true;
+  $("form-error").textContent = "";
+  showFieldErrors(null);
+  render();
+}
+
+// ---- rendering ----
 
 async function render() {
   $("list-error").textContent = "";
@@ -96,9 +156,7 @@ async function render() {
     info.append(addr, meta);
 
     const right = document.createElement("div");
-    right.style.display = "flex";
-    right.style.gap = "12px";
-    right.style.alignItems = "center";
+    right.className = "item-actions";
     const rent = document.createElement("span");
     rent.className = "rent";
     rent.textContent = `${money(l.monthlyRent)}/mo`;
@@ -107,10 +165,19 @@ async function render() {
     del.textContent = "Delete";
     del.setAttribute("aria-label", `Delete ${l.address}`);
     del.onclick = async () => {
-      try { await deleteListing(l.id); render(); }
+      try {
+        await deleteListing(l.id);
+        if (l.id === editingId) stopEdit(); else render();
+      }
       catch (e) { $("list-error").textContent = e.message; }
     };
-    right.append(rent, del);
+    const edit = document.createElement("button");
+    edit.className = "ghost";
+    edit.textContent = "Edit";
+    edit.setAttribute("aria-label", `Edit ${l.address}`);
+    edit.onclick = () => startEdit(l);
+    right.append(rent, edit, del);
+    if (l.id === editingId) li.classList.add("editing");
 
     li.append(info, right);
     ul.append(li);
@@ -125,21 +192,33 @@ $("add-form").addEventListener("submit", async (e) => {
   const address = f.address.value.trim();
   const monthlyRent = Number(f.monthlyRent.value);
   const bedrooms = Number(f.bedrooms.value);
-  const err = $("form-error");
-  if (!address) return (err.textContent = "Enter an address.");
+
+  // Same rules as the API, checked here first so the user gets instant feedback.
+  const fields = {};
+  if (!address) fields.address = "address is required";
+  else if (address.length > 200) fields.address = "address must be at most 200 characters";
   if (f.monthlyRent.value === "" || !Number.isInteger(monthlyRent) || monthlyRent < 0)
-    return (err.textContent = "Rent must be a whole number, 0 or more.");
+    fields.monthlyRent = "Rent must be a whole number, 0 or more";
   if (f.bedrooms.value === "" || !Number.isInteger(bedrooms) || bedrooms < 0)
-    return (err.textContent = "Bedrooms must be a whole number, 0 or more.");
+    fields.bedrooms = "Bedrooms must be a whole number, 0 or more";
+  showFieldErrors(fields);
+  const err = $("form-error");
+  if (Object.keys(fields).length) {
+    err.textContent = "Please fix the highlighted fields.";
+    return;
+  }
   err.textContent = "";
   try {
-    await addListing({ address, monthlyRent, bedrooms });
-    f.reset();
-    render();
+    await saveListing({ address, monthlyRent, bedrooms }, editingId);
+    if (editingId != null) stopEdit();
+    else { f.reset(); render(); }
   } catch (ex) {
+    if (ex instanceof FieldErrors) showFieldErrors(ex.fields);
     err.textContent = ex.message;
   }
 });
+
+$("cancel-edit").addEventListener("click", stopEdit);
 
 $("filter-form").addEventListener("submit", (e) => {
   e.preventDefault();

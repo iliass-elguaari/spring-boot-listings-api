@@ -79,6 +79,11 @@ button.ghost:hover { color: var(--text); }
 .meta { color: var(--muted); font-size: .9rem; }
 .rent { color: var(--accent); font-weight: 700; white-space: nowrap; }
 .listings button { padding: 6px 10px; font-size: .85rem; }
+.field-error { display: block; color: #ff7b86; font-size: .8rem; min-height: 1em; margin-top: 4px; }
+input[aria-invalid="true"] { border-color: #ff7b86; }
+.actions { display: flex; gap: 8px; }
+.listings .item-actions { display: flex; gap: 8px; align-items: center; }
+li.editing { background: rgba(255, 45, 61, .06); }
 .error { color: #ff7b86; min-height: 1em; margin: 8px 0 0; font-size: .9rem; }
 .empty { color: var(--muted); }
 footer { padding: 8px 16px 40px; font-size: .9rem; }
