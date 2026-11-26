@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.data.domain.Sort;
 
 // Runs the real derived queries against the in-memory H2 database,
 // so a typo in a method name or a wrong comparison shows up here.
@@ -40,25 +41,25 @@ class ListingRepositoryTest {
 
     @Test
     void maxRentIncludesListingsAtExactlyThatRent() {
-        assertThat(addresses(repository.findByMonthlyRentLessThanEqual(1000)))
+        assertThat(addresses(repository.findByMonthlyRentLessThanEqual(1000, Sort.unsorted())))
                 .containsExactlyInAnyOrder("75 Laurier Ave E", "340 Gloucester St");
     }
 
     @Test
     void minBedroomsIncludesListingsWithExactlyThatMany() {
-        assertThat(addresses(repository.findByBedroomsGreaterThanEqual(3)))
+        assertThat(addresses(repository.findByBedroomsGreaterThanEqual(3, Sort.unsorted())))
                 .containsExactlyInAnyOrder("340 Gloucester St", "15 Sandy Hill Rd");
     }
 
     @Test
     void combinedFilterAppliesBothConditions() {
-        assertThat(addresses(repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(1500, 2)))
+        assertThat(addresses(repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(1500, 2, Sort.unsorted())))
                 .containsExactlyInAnyOrder("200 Rideau St", "340 Gloucester St");
     }
 
     @Test
     void filtersReturnNothingWhenNoListingMatches() {
-        assertThat(repository.findByMonthlyRentLessThanEqual(500)).isEmpty();
-        assertThat(repository.findByBedroomsGreaterThanEqual(5)).isEmpty();
+        assertThat(repository.findByMonthlyRentLessThanEqual(500, Sort.unsorted())).isEmpty();
+        assertThat(repository.findByBedroomsGreaterThanEqual(5, Sort.unsorted())).isEmpty();
     }
 }

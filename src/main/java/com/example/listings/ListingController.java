@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 
 @RestController 
 @RequestMapping("/listings")
@@ -35,20 +37,32 @@ public class ListingController {
 
     // Both filters are optional and can be combined:
     // GET /listings?maxRent=1000&minBedrooms=2
+    // sort=rent lists the cheapest first, sort=-rent the most expensive first.
     @GetMapping
     public List<Listing> getListings(
             @RequestParam(required = false) @Min(value = 0, message = "maxRent cannot be negative") Integer maxRent,
-            @RequestParam(required = false) @Min(value = 0, message = "minBedrooms cannot be negative") Integer minBedrooms){
+            @RequestParam(required = false) @Min(value = 0, message = "minBedrooms cannot be negative") Integer minBedrooms,
+            @RequestParam(required = false) @Pattern(regexp = "-?rent", message = "sort must be rent or -rent") String sort){
+        Sort order = toSort(sort);
         if (maxRent != null && minBedrooms != null){
-            return repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(maxRent, minBedrooms);
+            return repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(maxRent, minBedrooms, order);
         }
         if (maxRent != null){
-            return repository.findByMonthlyRentLessThanEqual(maxRent);
+            return repository.findByMonthlyRentLessThanEqual(maxRent, order);
         }
         if (minBedrooms != null){
-            return repository.findByBedroomsGreaterThanEqual(minBedrooms);
+            return repository.findByBedroomsGreaterThanEqual(minBedrooms, order);
         }
-        return repository.findAll();
+        return repository.findAll(order);
+    }
+
+    // Ties on rent fall back to id so the order is stable between requests.
+    private static Sort toSort(String sort){
+        if (sort == null){
+            return Sort.by("id");
+        }
+        Sort byRent = sort.startsWith("-") ? Sort.by("monthlyRent").descending() : Sort.by("monthlyRent");
+        return byRent.and(Sort.by("id"));
     }
 
     @GetMapping("/{id}")

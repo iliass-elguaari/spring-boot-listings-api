@@ -1,6 +1,7 @@
 package com.example.listings;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -17,6 +18,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,7 +42,7 @@ class ListingControllerTest {
 
     @Test
     void getReturnsAllListingsWithoutFilter() throws Exception {
-        when(repository.findAll()).thenReturn(List.of(
+        when(repository.findAll(any(Sort.class))).thenReturn(List.of(
                 listing("75 Laurier Ave E", 950, 1),
                 listing("200 Rideau St", 1400, 2)));
 
@@ -51,7 +53,7 @@ class ListingControllerTest {
 
     @Test
     void getFiltersByMaxRent() throws Exception {
-        when(repository.findByMonthlyRentLessThanEqual(1000))
+        when(repository.findByMonthlyRentLessThanEqual(eq(1000), any(Sort.class)))
                 .thenReturn(List.of(listing("75 Laurier Ave E", 950, 1)));
 
         mvc.perform(get("/listings").param("maxRent", "1000"))
@@ -187,7 +189,7 @@ class ListingControllerTest {
 
     @Test
     void getFiltersByMinBedrooms() throws Exception {
-        when(repository.findByBedroomsGreaterThanEqual(2))
+        when(repository.findByBedroomsGreaterThanEqual(eq(2), any(Sort.class)))
                 .thenReturn(List.of(listing("200 Rideau St", 1400, 2)));
 
         mvc.perform(get("/listings").param("minBedrooms", "2"))
@@ -198,7 +200,7 @@ class ListingControllerTest {
 
     @Test
     void getCombinesMaxRentAndMinBedrooms() throws Exception {
-        when(repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(1500, 2))
+        when(repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(eq(1500), eq(2), any(Sort.class)))
                 .thenReturn(List.of(listing("200 Rideau St", 1400, 2)));
 
         mvc.perform(get("/listings").param("maxRent", "1500").param("minBedrooms", "2"))
