@@ -27,14 +27,15 @@ function demoSave(list) {
 }
 
 // ---- API calls with demo fallback ----
-// filters: { maxRent, minBedrooms }, each a number or null
+// filters: { maxRent, minBedrooms } (each a number or null) and sort ("", "rent" or "-rent")
 async function fetchListings(filters) {
-  const { maxRent, minBedrooms } = filters;
+  const { maxRent, minBedrooms, sort } = filters;
   if (!demo) {
     try {
       const params = new URLSearchParams();
       if (maxRent != null) params.set("maxRent", maxRent);
       if (minBedrooms != null) params.set("minBedrooms", minBedrooms);
+      if (sort) params.set("sort", sort);
       const url = params.toString() ? `${API}?${params}` : API;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       const type = res.headers.get("content-type") || "";
@@ -45,10 +46,13 @@ async function fetchListings(filters) {
       $("demo-banner").hidden = false;
     }
   }
-  const all = demoLoad();
-  return all.filter((l) =>
+  const matches = demoLoad().filter((l) =>
     (maxRent == null || l.monthlyRent <= maxRent) &&
     (minBedrooms == null || l.bedrooms >= minBedrooms));
+  // Same order as the API: by rent when asked, ties and the default by id.
+  const dir = sort === "-rent" ? -1 : 1;
+  return matches.sort((a, b) =>
+    (sort ? dir * (a.monthlyRent - b.monthlyRent) : 0) || a.id - b.id);
 }
 
 // Error carrying the API's per-field messages, e.g. { monthlyRent: "monthlyRent cannot be negative" }
@@ -99,7 +103,8 @@ async function deleteListing(id) {
 }
 
 // ---- form state ----
-let filters = { maxRent: null, minBedrooms: null };
+// The page shows the cheapest listings first unless the visitor picks another order.
+let filters = { maxRent: null, minBedrooms: null, sort: "rent" };
 let editingId = null;
 
 function showFieldErrors(fields) {
@@ -148,7 +153,6 @@ async function render() {
     $("list-error").textContent = e.message;
     return;
   }
-  list.sort((a, b) => a.monthlyRent - b.monthlyRent);
   const ul = $("listings");
   ul.replaceChildren();
   for (const l of list) {
@@ -236,13 +240,19 @@ $("filter-form").addEventListener("submit", (e) => {
     $("list-error").textContent = "Filters cannot be negative.";
     return;
   }
-  filters = { maxRent, minBedrooms };
+  filters = { maxRent, minBedrooms, sort: e.target.sort.value };
   render();
 });
 
 $("clear-filter").addEventListener("click", () => {
   $("filter-form").reset();
-  filters = { maxRent: null, minBedrooms: null };
+  filters = { maxRent: null, minBedrooms: null, sort: "rent" };
+  render();
+});
+
+// Changing the order applies right away, keeping the current filters.
+$("sort").addEventListener("change", (e) => {
+  filters = { ...filters, sort: e.target.value };
   render();
 });
 

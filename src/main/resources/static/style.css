@@ -36,7 +36,7 @@ code { background: var(--line); padding: 1px 6px; border-radius: 4px; }
   margin-bottom: 20px;
 }
 label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 12px; }
-input {
+input, select {
   display: block;
   width: 100%;
   margin-top: 4px;
@@ -46,8 +46,10 @@ input {
   border: 1px solid var(--line);
   border-radius: 6px;
   font: inherit;
+  line-height: 1.2;
 }
-input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+select { padding-right: 8px; }
+input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 button {
   background: var(--accent);
@@ -65,6 +67,7 @@ button.ghost:hover { color: var(--text); }
 .list-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .filter { display: flex; gap: 8px; align-items: flex-end; }
 .filter label { margin: 0; width: 110px; }
+.filter label.sort { width: 150px; }
 .count { color: var(--muted); font-weight: 400; }
 .listings { list-style: none; padding: 0; margin: 0; }
 .listings li {
@@ -92,4 +95,5 @@ footer a { color: var(--muted); }
   .row { grid-template-columns: 1fr; }
   .filter { flex-wrap: wrap; }
   .filter label { width: 100px; }
+  .filter label.sort { width: 150px; }
 }

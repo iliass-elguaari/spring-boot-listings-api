@@ -53,6 +53,13 @@
           <label>Min beds
             <input name="minBedrooms" type="number" min="0" step="1" placeholder="Any">
           </label>
+          <label class="sort">Sort
+            <select name="sort" id="sort">
+              <option value="rent" selected>Rent: low to high</option>
+              <option value="-rent">Rent: high to low</option>
+              <option value="">Date added</option>
+            </select>
+          </label>
           <button type="submit">Filter</button>
           <button type="button" id="clear-filter" class="ghost">Clear</button>
         </form>
