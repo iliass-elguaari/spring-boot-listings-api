@@ -216,4 +216,36 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.maxRent").value("maxRent cannot be negative"))
                 .andExpect(jsonPath("$.errors.minBedrooms").value("minBedrooms cannot be negative"));
     }
+
+    @Test
+    void sortRentAsksRepositoryForCheapestFirst() throws Exception {
+        when(repository.findAll(Sort.by("monthlyRent").and(Sort.by("id")))).thenReturn(List.of(
+                listing("75 Laurier Ave E", 950, 1),
+                listing("200 Rideau St", 1400, 2)));
+
+        mvc.perform(get("/listings").param("sort", "rent"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].monthlyRent").value(950))
+                .andExpect(jsonPath("$[1].monthlyRent").value(1400));
+    }
+
+    @Test
+    void sortMinusRentAsksForMostExpensiveFirstAndKeepsFilters() throws Exception {
+        Sort priciestFirst = Sort.by("monthlyRent").descending().and(Sort.by("id"));
+        when(repository.findByMonthlyRentLessThanEqual(1500, priciestFirst)).thenReturn(List.of(
+                listing("200 Rideau St", 1400, 2),
+                listing("75 Laurier Ave E", 950, 1)));
+
+        mvc.perform(get("/listings").param("maxRent", "1500").param("sort", "-rent"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].monthlyRent").value(1400))
+                .andExpect(jsonPath("$[1].monthlyRent").value(950));
+    }
+
+    @Test
+    void unknownSortIsRejected() throws Exception {
+        mvc.perform(get("/listings").param("sort", "address"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.sort").value("sort must be rent or -rent"));
+    }
 }

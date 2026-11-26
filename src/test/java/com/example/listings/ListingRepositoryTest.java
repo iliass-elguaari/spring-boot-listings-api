@@ -62,4 +62,12 @@ class ListingRepositoryTest {
         assertThat(repository.findByMonthlyRentLessThanEqual(500, Sort.unsorted())).isEmpty();
         assertThat(repository.findByBedroomsGreaterThanEqual(5, Sort.unsorted())).isEmpty();
     }
+
+    @Test
+    void sortingByRentOrdersCheapestOrPriciestFirst() {
+        assertThat(addresses(repository.findAll(Sort.by("monthlyRent"))))
+                .containsExactly("75 Laurier Ave E", "340 Gloucester St", "200 Rideau St", "15 Sandy Hill Rd");
+        assertThat(addresses(repository.findByBedroomsGreaterThanEqual(2, Sort.by("monthlyRent").descending())))
+                .containsExactly("15 Sandy Hill Rd", "200 Rideau St", "340 Gloucester St");
+    }
 }
