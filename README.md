@@ -1,5 +1,7 @@
 # Listings API
 
+[![Tests](https://github.com/iliass-elguaari/spring-boot-listings-api/actions/workflows/tests.yml/badge.svg)](https://github.com/iliass-elguaari/spring-boot-listings-api/actions/workflows/tests.yml)
+
 A small REST API for student housing listings, built to learn Spring Boot and PostgreSQL.
 
 ## What it does
@@ -50,11 +52,16 @@ DB_URL=jdbc:postgresql://db.example.com:5432/listings DB_PASSWORD=secret ./mvnw 
 ```
 
 ## Tests
-Controller tests use `@WebMvcTest` with a mocked repository, so they run without a database:
+Every push and pull request runs the whole suite on GitHub Actions (badge at the top). Locally:
 
 ```
-./mvnw test -Dtest=ListingControllerTest
+./mvnw test
 ```
+
+No Postgres is needed: the tests run on an in-memory H2 database.
+- **ListingControllerTest**: `@WebMvcTest` with a mocked repository, covering every endpoint, validation errors, filters and sorting
+- **ListingRepositoryTest**: `@DataJpaTest` that runs the real filter and sort queries against H2
+- **ListingsApplicationTests**: checks the whole app starts
 
 ## Stack
 Java, Spring Boot, Spring Data JPA, PostgreSQL, Maven
