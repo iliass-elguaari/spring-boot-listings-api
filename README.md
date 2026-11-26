@@ -35,6 +35,19 @@ A small web page in `src/main/resources/static` lets you browse listings, filter
 2. `./mvnw spring-boot:run`
 3. Open `localhost:8080/listings`
 
+The database connection is read from environment variables, so no real password has to live in the repo. Each one falls back to a local default:
+
+| Variable | Default |
+| --- | --- |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/nextroom_practice` |
+| `DB_USERNAME` | `postgres` |
+| `DB_PASSWORD` | `postgres` |
+| `SHOW_SQL` | `false` (set to `true` to log every SQL query) |
+
+```
+DB_URL=jdbc:postgresql://db.example.com:5432/listings DB_PASSWORD=secret ./mvnw spring-boot:run
+```
+
 ## Tests
 Controller tests use `@WebMvcTest` with a mocked repository, so they run without a database:
 
