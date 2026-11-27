@@ -5,7 +5,7 @@
 A small REST API for student housing listings, built to learn Spring Boot and PostgreSQL.
 
 ## What it does
-- `POST /listings` adds a listing (address, monthly rent, bedrooms)
+- `POST /listings` adds a listing (address, monthly rent, bedrooms) and answers `201 Created` with a `Location` header pointing at it, e.g. `/listings/7`. The database picks the id, so an `id` in the body is ignored
 - `GET /listings` returns all listings
 - `GET /listings?maxRent=1000` returns listings at or under a rent
 - `GET /listings?minBedrooms=2` returns listings with at least that many bedrooms
