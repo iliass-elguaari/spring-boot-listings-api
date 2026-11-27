@@ -256,4 +256,22 @@ class ListingControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.sort").value("sort must be rent or -rent"));
     }
+
+    @Test
+    void searchReturnsMatchingListings() throws Exception {
+        when(repository.findAll(anySpec(), any(Sort.class)))
+                .thenReturn(List.of(listing("75 Laurier Ave E", 950, 1)));
+
+        mvc.perform(get("/listings").param("q", "laurier").param("maxRent", "1000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].address").value("75 Laurier Ave E"));
+    }
+
+    @Test
+    void overlongSearchIsRejected() throws Exception {
+        mvc.perform(get("/listings").param("q", "x".repeat(101)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.q").value("q must be at most 100 characters"));
+    }
 }

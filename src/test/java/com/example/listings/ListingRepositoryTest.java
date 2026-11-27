@@ -36,13 +36,14 @@ class ListingRepositoryTest {
                 listing("75 Laurier Ave E", 950, 1),
                 listing("200 Rideau St", 1400, 2),
                 listing("340 Gloucester St", 1000, 3),
-                listing("15 Sandy Hill Rd", 2100, 4)));
+                listing("15 Sandy Hill Rd", 2100, 4),
+                listing("50% Off Lane", 600, 1)));
     }
 
     @Test
     void maxRentIncludesListingsAtExactlyThatRent() {
         assertThat(addresses(repository.findAll(ListingSpecs.rentAtMost(1000))))
-                .containsExactlyInAnyOrder("75 Laurier Ave E", "340 Gloucester St");
+                .containsExactlyInAnyOrder("50% Off Lane", "75 Laurier Ave E", "340 Gloucester St");
     }
 
     @Test
@@ -66,13 +67,42 @@ class ListingRepositoryTest {
     @Test
     void sortingByRentOrdersCheapestOrPriciestFirst() {
         assertThat(addresses(repository.findAll(Sort.by("monthlyRent"))))
-                .containsExactly("75 Laurier Ave E", "340 Gloucester St", "200 Rideau St", "15 Sandy Hill Rd");
+                .containsExactly("50% Off Lane", "75 Laurier Ave E", "340 Gloucester St", "200 Rideau St", "15 Sandy Hill Rd");
         assertThat(addresses(repository.findAll(ListingSpecs.bedroomsAtLeast(2), Sort.by("monthlyRent").descending())))
                 .containsExactly("15 Sandy Hill Rd", "200 Rideau St", "340 Gloucester St");
     }
 
     @Test
     void specWithNoFiltersMatchesEverything() {
-        assertThat(repository.findAll(ListingSpecs.matching(null, null, null), Sort.by("id"))).hasSize(4);
+        assertThat(repository.findAll(ListingSpecs.matching(null, null, null), Sort.by("id"))).hasSize(5);
+    }
+
+    @Test
+    void searchMatchesPartOfTheAddressIgnoringCase() {
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(null, null, "laurier"))))
+                .containsExactly("75 Laurier Ave E");
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(null, null, "  ST  "), Sort.by("id"))))
+                .containsExactly("200 Rideau St", "340 Gloucester St");
+    }
+
+    @Test
+    void searchCombinesWithTheOtherFilters() {
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(1500, 2, "st"))))
+                .containsExactlyInAnyOrder("200 Rideau St", "340 Gloucester St");
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(1200, null, "st"))))
+                .containsExactly("340 Gloucester St");
+    }
+
+    @Test
+    void searchTreatsPercentAndUnderscoreAsPlainText() {
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(null, null, "50%"))))
+                .containsExactly("50% Off Lane");
+        assertThat(repository.findAll(ListingSpecs.matching(null, null, "%"))).hasSize(1);
+        assertThat(repository.findAll(ListingSpecs.matching(null, null, "_"))).isEmpty();
+    }
+
+    @Test
+    void blankSearchIsIgnored() {
+        assertThat(repository.findAll(ListingSpecs.matching(null, null, "   "))).hasSize(5);
     }
 }
