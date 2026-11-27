@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -38,5 +39,11 @@ public class ApiErrorHandler {
             result.getResolvableErrors().forEach(err -> errors.putIfAbsent(name, err.getDefaultMessage()));
         });
         return badRequest(errors);
+    }
+
+    // Body that isn't valid JSON, or has the wrong type in a field (e.g. "monthlyRent": "cheap")
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Map<String, String>>> handleUnreadableBody(HttpMessageNotReadableException e) {
+        return badRequest(Map.of("body", "request body must be valid JSON with address, monthlyRent and bedrooms"));
     }
 }

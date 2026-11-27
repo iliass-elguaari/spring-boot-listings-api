@@ -274,4 +274,21 @@ class ListingControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.q").value("q must be at most 100 characters"));
     }
+
+    @Test
+    void malformedJsonGetsTheUsualErrorShape() throws Exception {
+        mvc.perform(post("/listings").contentType(MediaType.APPLICATION_JSON).content("{\"address\": "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.body").value("request body must be valid JSON with address, monthlyRent and bedrooms"));
+        verify(repository, never()).save(any(Listing.class));
+    }
+
+    @Test
+    void wrongTypeInBodyGetsTheUsualErrorShape() throws Exception {
+        mvc.perform(put("/listings/1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"address\":\"75 Laurier Ave E\",\"monthlyRent\":\"cheap\",\"bedrooms\":1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.body").exists());
+        verify(repository, never()).save(any(Listing.class));
+    }
 }
