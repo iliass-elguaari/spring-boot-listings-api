@@ -27,14 +27,16 @@ function demoSave(list) {
 }
 
 // ---- API calls with demo fallback ----
-// filters: { maxRent, minBedrooms } (each a number or null) and sort ("", "rent" or "-rent")
+// filters: { maxRent, minBedrooms } (each a number or null), q (address search text)
+// and sort ("", "rent" or "-rent")
 async function fetchListings(filters) {
-  const { maxRent, minBedrooms, sort } = filters;
+  const { maxRent, minBedrooms, q, sort } = filters;
   if (!demo) {
     try {
       const params = new URLSearchParams();
       if (maxRent != null) params.set("maxRent", maxRent);
       if (minBedrooms != null) params.set("minBedrooms", minBedrooms);
+      if (q) params.set("q", q);
       if (sort) params.set("sort", sort);
       const url = params.toString() ? `${API}?${params}` : API;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
@@ -47,6 +49,7 @@ async function fetchListings(filters) {
     }
   }
   const matches = demoLoad().filter((l) =>
+    (!q || l.address.toLowerCase().includes(q.toLowerCase())) &&
     (maxRent == null || l.monthlyRent <= maxRent) &&
     (minBedrooms == null || l.bedrooms >= minBedrooms));
   // Same order as the API: by rent when asked, ties and the default by id.
@@ -104,7 +107,7 @@ async function deleteListing(id) {
 
 // ---- form state ----
 // The page shows the cheapest listings first unless the visitor picks another order.
-let filters = { maxRent: null, minBedrooms: null, sort: "rent" };
+let filters = { maxRent: null, minBedrooms: null, q: "", sort: "rent" };
 let editingId = null;
 
 function showFieldErrors(fields) {
@@ -240,13 +243,14 @@ $("filter-form").addEventListener("submit", (e) => {
     $("list-error").textContent = "Filters cannot be negative.";
     return;
   }
-  filters = { maxRent, minBedrooms, sort: e.target.sort.value };
+  filters = { ...filters, maxRent, minBedrooms, sort: e.target.sort.value };
   render();
 });
 
 $("clear-filter").addEventListener("click", () => {
   $("filter-form").reset();
-  filters = { maxRent: null, minBedrooms: null, sort: "rent" };
+  $("search").value = "";
+  filters = { maxRent: null, minBedrooms: null, q: "", sort: "rent" };
   render();
 });
 
@@ -254,6 +258,16 @@ $("clear-filter").addEventListener("click", () => {
 $("sort").addEventListener("change", (e) => {
   filters = { ...filters, sort: e.target.value };
   render();
+});
+
+// Search as you type, waiting for a short pause so each keystroke isn't a request.
+let searchTimer;
+$("search").addEventListener("input", (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    filters = { ...filters, q: e.target.value.trim() };
+    render();
+  }, 250);
 });
 
 render();
