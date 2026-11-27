@@ -16,13 +16,24 @@ A small REST API for student housing listings, built to learn Spring Boot and Po
 - `GET /listings/{id}` returns one listing, or `404 Not Found`
 - `PUT /listings/{id}` replaces a listing's address, rent and bedrooms (same validation as `POST`), or `404 Not Found`
 - `DELETE /listings/{id}` removes a listing (`204 No Content`), or `404 Not Found`
-- Validates every new listing and answers `400 Bad Request` with one message per bad field:
-  - `address` is required and at most 200 characters
-  - `monthlyRent` and `bedrooms` cannot be negative
 
-  ```json
-  { "errors": { "monthlyRent": "monthlyRent cannot be negative" } }
-  ```
+## Errors
+Every bad request gets `400 Bad Request` in the same format, with one message per problem, so a client only has to handle one shape:
+
+```json
+{ "errors": { "monthlyRent": "monthlyRent cannot be negative" } }
+```
+
+| Problem | Example | Key in `errors` |
+| --- | --- | --- |
+| Missing or too long address (max 200 characters) | `"address": ""` | `address` |
+| Negative rent or bedrooms | `"bedrooms": -1` | `monthlyRent`, `bedrooms` |
+| Negative filter | `?maxRent=-5` | `maxRent`, `minBedrooms` |
+| Number field that isn't a number | `?maxRent=abc`, `/listings/abc` | `maxRent`, `minBedrooms`, `id` |
+| Unknown sort or search over 100 characters | `?sort=address` | `sort`, `q` |
+| Body that isn't valid JSON | `{"address": ` | `body` |
+
+All of this lives in `ApiErrorHandler`, a `@RestControllerAdvice` shared by every endpoint.
 
 ## Front end
 A small web page in `src/main/resources/static` lets you browse listings, search by address as you type, filter by max rent and minimum bedrooms, sort by rent, post, edit and delete listings. Validation errors from the API show up under the field they belong to.
@@ -34,6 +45,7 @@ A small web page in `src/main/resources/static` lets you browse listings, search
 - **ListingSpecs**: one small JPA Specification per filter (address search, max rent, min bedrooms), combined for whichever ones the request uses. Adding a filter is one more method, not another query for every combination
 - **ListingRepository**: Spring Data JPA repository that runs those specifications with a `Sort` for the rent order
 - **ListingController**: REST endpoints
+- **ApiErrorHandler**: turns every kind of bad request into the `errors` format above
 - **static/**: plain HTML, CSS and JavaScript front end, served by Spring Boot and deployed to GitHub Pages by a workflow
 
 ## Run it
