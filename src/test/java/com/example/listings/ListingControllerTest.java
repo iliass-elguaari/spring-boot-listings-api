@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,9 +41,16 @@ class ListingControllerTest {
         return l;
     }
 
+    // Which rows a filter matches is covered by ListingRepositoryTest against a real database;
+    // here we only check the controller passes the result and the sort order through.
+    @SuppressWarnings("unchecked")
+    private static Specification<Listing> anySpec() {
+        return any(Specification.class);
+    }
+
     @Test
     void getReturnsAllListingsWithoutFilter() throws Exception {
-        when(repository.findAll(any(Sort.class))).thenReturn(List.of(
+        when(repository.findAll(anySpec(), any(Sort.class))).thenReturn(List.of(
                 listing("75 Laurier Ave E", 950, 1),
                 listing("200 Rideau St", 1400, 2)));
 
@@ -53,7 +61,7 @@ class ListingControllerTest {
 
     @Test
     void getFiltersByMaxRent() throws Exception {
-        when(repository.findByMonthlyRentLessThanEqual(eq(1000), any(Sort.class)))
+        when(repository.findAll(anySpec(), any(Sort.class)))
                 .thenReturn(List.of(listing("75 Laurier Ave E", 950, 1)));
 
         mvc.perform(get("/listings").param("maxRent", "1000"))
@@ -189,7 +197,7 @@ class ListingControllerTest {
 
     @Test
     void getFiltersByMinBedrooms() throws Exception {
-        when(repository.findByBedroomsGreaterThanEqual(eq(2), any(Sort.class)))
+        when(repository.findAll(anySpec(), any(Sort.class)))
                 .thenReturn(List.of(listing("200 Rideau St", 1400, 2)));
 
         mvc.perform(get("/listings").param("minBedrooms", "2"))
@@ -200,7 +208,7 @@ class ListingControllerTest {
 
     @Test
     void getCombinesMaxRentAndMinBedrooms() throws Exception {
-        when(repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(eq(1500), eq(2), any(Sort.class)))
+        when(repository.findAll(anySpec(), any(Sort.class)))
                 .thenReturn(List.of(listing("200 Rideau St", 1400, 2)));
 
         mvc.perform(get("/listings").param("maxRent", "1500").param("minBedrooms", "2"))
@@ -219,7 +227,7 @@ class ListingControllerTest {
 
     @Test
     void sortRentAsksRepositoryForCheapestFirst() throws Exception {
-        when(repository.findAll(Sort.by("monthlyRent").and(Sort.by("id")))).thenReturn(List.of(
+        when(repository.findAll(anySpec(), eq(Sort.by("monthlyRent").and(Sort.by("id"))))).thenReturn(List.of(
                 listing("75 Laurier Ave E", 950, 1),
                 listing("200 Rideau St", 1400, 2)));
 
@@ -232,7 +240,7 @@ class ListingControllerTest {
     @Test
     void sortMinusRentAsksForMostExpensiveFirstAndKeepsFilters() throws Exception {
         Sort priciestFirst = Sort.by("monthlyRent").descending().and(Sort.by("id"));
-        when(repository.findByMonthlyRentLessThanEqual(1500, priciestFirst)).thenReturn(List.of(
+        when(repository.findAll(anySpec(), eq(priciestFirst))).thenReturn(List.of(
                 listing("200 Rideau St", 1400, 2),
                 listing("75 Laurier Ave E", 950, 1)));
 

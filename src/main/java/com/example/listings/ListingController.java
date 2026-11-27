@@ -43,17 +43,7 @@ public class ListingController {
             @RequestParam(required = false) @Min(value = 0, message = "maxRent cannot be negative") Integer maxRent,
             @RequestParam(required = false) @Min(value = 0, message = "minBedrooms cannot be negative") Integer minBedrooms,
             @RequestParam(required = false) @Pattern(regexp = "-?rent", message = "sort must be rent or -rent") String sort){
-        Sort order = toSort(sort);
-        if (maxRent != null && minBedrooms != null){
-            return repository.findByMonthlyRentLessThanEqualAndBedroomsGreaterThanEqual(maxRent, minBedrooms, order);
-        }
-        if (maxRent != null){
-            return repository.findByMonthlyRentLessThanEqual(maxRent, order);
-        }
-        if (minBedrooms != null){
-            return repository.findByBedroomsGreaterThanEqual(minBedrooms, order);
-        }
-        return repository.findAll(order);
+        return repository.findAll(ListingSpecs.matching(maxRent, minBedrooms), toSort(sort));
     }
 
     // Ties on rent fall back to id so the order is stable between requests.
