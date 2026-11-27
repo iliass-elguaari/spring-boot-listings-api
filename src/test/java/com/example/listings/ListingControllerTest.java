@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -71,13 +72,19 @@ class ListingControllerTest {
     }
 
     @Test
-    void postSavesListing() throws Exception {
-        when(repository.save(any(Listing.class))).thenAnswer(inv -> inv.getArgument(0));
+    void postCreatesListingAndPointsToIt() throws Exception {
+        when(repository.save(any(Listing.class))).thenAnswer(inv -> {
+            Listing saved = inv.getArgument(0);
+            saved.setId(7L);
+            return saved;
+        });
 
         mvc.perform(post("/listings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"address\":\"75 Laurier Ave E\",\"monthlyRent\":950,\"bedrooms\":1}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "http://localhost/listings/7"))
+                .andExpect(jsonPath("$.id").value(7))
                 .andExpect(jsonPath("$.address").value("75 Laurier Ave E"));
     }
 

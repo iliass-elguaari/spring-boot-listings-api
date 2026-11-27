@@ -1,5 +1,6 @@
 package com.example.listings;
 
+import java.net.URI;
 import java.util.List;
 
 import org.springframework.data.domain.Sort;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -80,8 +82,11 @@ public class ListingController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping 
-    public Listing addListing(@Valid @RequestBody Listing listing){
-        return repository.save(listing);
+    // 201 Created with a Location header pointing at the new listing, e.g. /listings/7
+    @PostMapping
+    public ResponseEntity<Listing> addListing(@Valid @RequestBody Listing listing, UriComponentsBuilder uri){
+        Listing saved = repository.save(listing);
+        URI location = uri.path("/listings/{id}").buildAndExpand(saved.getId()).toUri();
+        return ResponseEntity.created(location).body(saved);
     }
 }
