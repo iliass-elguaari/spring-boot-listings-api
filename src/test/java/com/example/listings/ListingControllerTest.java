@@ -291,4 +291,18 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.body").exists());
         verify(repository, never()).save(any(Listing.class));
     }
+
+    @Test
+    void nonNumericFilterIsRejectedWithFieldMessage() throws Exception {
+        mvc.perform(get("/listings").param("maxRent", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.maxRent").value("maxRent must be a whole number"));
+    }
+
+    @Test
+    void nonNumericIdIsRejectedWithFieldMessage() throws Exception {
+        mvc.perform(get("/listings/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.id").value("id must be a whole number"));
+    }
 }

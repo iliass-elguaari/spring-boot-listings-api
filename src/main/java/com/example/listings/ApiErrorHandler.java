@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 // Every bad request gets the same shape, one message per problem:
 // {"errors": {"monthlyRent": "monthlyRent cannot be negative"}}
@@ -45,5 +46,11 @@ public class ApiErrorHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Map<String, String>>> handleUnreadableBody(HttpMessageNotReadableException e) {
         return badRequest(Map.of("body", "request body must be valid JSON with address, monthlyRent and bedrooms"));
+    }
+
+    // A query or path value that isn't a number, e.g. ?maxRent=abc or /listings/abc
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Map<String, String>>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        return badRequest(Map.of(e.getName(), e.getName() + " must be a whole number"));
     }
 }
