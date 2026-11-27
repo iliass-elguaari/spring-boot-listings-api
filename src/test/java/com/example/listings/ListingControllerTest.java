@@ -2,6 +2,7 @@ package com.example.listings;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -311,5 +313,23 @@ class ListingControllerTest {
         mvc.perform(get("/listings/abc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.id").value("id must be a whole number"));
+    }
+
+    @Test
+    void postIgnoresAnIdInTheBodySoItCannotOverwriteAListing() throws Exception {
+        List<Long> idsPassedToSave = new ArrayList<>();
+        when(repository.save(any(Listing.class))).thenAnswer(inv -> {
+            Listing saved = inv.getArgument(0);
+            idsPassedToSave.add(saved.getId());
+            saved.setId(8L);
+            return saved;
+        });
+
+        mvc.perform(post("/listings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"id\":1,\"address\":\"200 Rideau St\",\"monthlyRent\":1400,\"bedrooms\":2}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(8));
+        assertThat(idsPassedToSave).containsExactly((Long) null);
     }
 }

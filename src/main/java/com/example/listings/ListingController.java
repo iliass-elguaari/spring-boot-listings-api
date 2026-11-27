@@ -85,6 +85,9 @@ public class ListingController {
     // 201 Created with a Location header pointing at the new listing, e.g. /listings/7
     @PostMapping
     public ResponseEntity<Listing> addListing(@Valid @RequestBody Listing listing, UriComponentsBuilder uri){
+        // The database assigns ids. Without this, a body with "id": 1 would
+        // overwrite listing 1 instead of adding a new one.
+        listing.setId(null);
         Listing saved = repository.save(listing);
         URI location = uri.path("/listings/{id}").buildAndExpand(saved.getId()).toUri();
         return ResponseEntity.created(location).body(saved);
