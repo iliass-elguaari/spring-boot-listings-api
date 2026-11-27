@@ -70,4 +70,20 @@ class ListingRepositoryTest {
         assertThat(addresses(repository.findByBedroomsGreaterThanEqual(2, Sort.by("monthlyRent").descending())))
                 .containsExactly("15 Sandy Hill Rd", "200 Rideau St", "340 Gloucester St");
     }
+
+    @Test
+    void specsMatchTheSameListingsAsTheQueryMethods() {
+        Sort byRent = Sort.by("monthlyRent");
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(1000, null), byRent)))
+                .containsExactly("75 Laurier Ave E", "340 Gloucester St");
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(null, 3), byRent)))
+                .containsExactly("340 Gloucester St", "15 Sandy Hill Rd");
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(1500, 2), byRent)))
+                .containsExactly("340 Gloucester St", "200 Rideau St");
+    }
+
+    @Test
+    void specWithNoFiltersMatchesEverything() {
+        assertThat(repository.findAll(ListingSpecs.matching(null, null), Sort.by("id"))).hasSize(4);
+    }
 }
