@@ -53,7 +53,7 @@ class ListingRepositoryTest {
 
     @Test
     void combinedFilterAppliesBothConditions() {
-        assertThat(addresses(repository.findAll(ListingSpecs.matching(1500, 2))))
+        assertThat(addresses(repository.findAll(ListingSpecs.matching(1500, 2, null))))
                 .containsExactlyInAnyOrder("200 Rideau St", "340 Gloucester St");
     }
 
@@ -73,6 +73,6 @@ class ListingRepositoryTest {
 
     @Test
     void specWithNoFiltersMatchesEverything() {
-        assertThat(repository.findAll(ListingSpecs.matching(null, null), Sort.by("id"))).hasSize(4);
+        assertThat(repository.findAll(ListingSpecs.matching(null, null, null), Sort.by("id"))).hasSize(4);
     }
 }

@@ -2,6 +2,7 @@ package com.example.listings;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -21,9 +22,22 @@ public final class ListingSpecs {
         return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("bedrooms"), minBedrooms);
     }
 
-    // Null filters are skipped; with no filters every listing matches.
-    public static Specification<Listing> matching(Integer maxRent, Integer minBedrooms) {
+    // Case-insensitive "contains" match on the address. LIKE wildcards typed by
+    // the user are escaped so "50%" searches for the text "50%" literally.
+    public static Specification<Listing> addressContains(String text) {
+        String pattern = "%" + text.toLowerCase(Locale.ROOT)
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_") + "%";
+        return (root, query, cb) -> cb.like(cb.lower(root.get("address")), pattern, '\\');
+    }
+
+    // Null filters (and a blank search) are skipped; with no filters every listing matches.
+    public static Specification<Listing> matching(Integer maxRent, Integer minBedrooms, String q) {
         List<Specification<Listing>> filters = new ArrayList<>();
+        if (q != null && !q.isBlank()) {
+            filters.add(addressContains(q.strip()));
+        }
         if (maxRent != null) {
             filters.add(rentAtMost(maxRent));
         }

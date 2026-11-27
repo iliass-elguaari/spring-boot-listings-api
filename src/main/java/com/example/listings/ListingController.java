@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 @RestController 
 @RequestMapping("/listings")
@@ -36,14 +37,16 @@ public class ListingController {
 
 
     // Both filters are optional and can be combined:
-    // GET /listings?maxRent=1000&minBedrooms=2
+    // GET /listings?maxRent=1000&minBedrooms=2&q=laurier
+    // q matches any listing whose address contains the text, ignoring case.
     // sort=rent lists the cheapest first, sort=-rent the most expensive first.
     @GetMapping
     public List<Listing> getListings(
             @RequestParam(required = false) @Min(value = 0, message = "maxRent cannot be negative") Integer maxRent,
             @RequestParam(required = false) @Min(value = 0, message = "minBedrooms cannot be negative") Integer minBedrooms,
+            @RequestParam(required = false) @Size(max = 100, message = "q must be at most 100 characters") String q,
             @RequestParam(required = false) @Pattern(regexp = "-?rent", message = "sort must be rent or -rent") String sort){
-        return repository.findAll(ListingSpecs.matching(maxRent, minBedrooms), toSort(sort));
+        return repository.findAll(ListingSpecs.matching(maxRent, minBedrooms, q), toSort(sort));
     }
 
     // Ties on rent fall back to id so the order is stable between requests.
