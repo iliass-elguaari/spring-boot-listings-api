@@ -2,6 +2,7 @@ package com.example.listings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -114,5 +115,28 @@ class ListingRepositoryTest {
                 PageRequest.of(1, 2, Sort.by("monthlyRent")));
         assertThat(page.getTotalElements()).isEqualTo(4);
         assertThat(addresses(page.getContent())).containsExactly("340 Gloucester St", "200 Rideau St");
+    }
+
+    @Test
+    void savingSetsCreatedAndUpdatedTimes() {
+        Instant before = Instant.now().minusSeconds(1);
+        Listing saved = repository.saveAndFlush(listing("1 Nicholas St", 800, 1));
+
+        assertThat(saved.getCreatedAt()).isAfter(before);
+        assertThat(saved.getUpdatedAt()).isAfter(before);
+    }
+
+    @Test
+    void editingMovesUpdatedAtButKeepsCreatedAt() throws InterruptedException {
+        Listing saved = repository.saveAndFlush(listing("1 Nicholas St", 800, 1));
+        Instant created = saved.getCreatedAt();
+        Instant firstUpdate = saved.getUpdatedAt();
+
+        Thread.sleep(20);
+        saved.setMonthlyRent(850);
+        Listing edited = repository.saveAndFlush(saved);
+
+        assertThat(edited.getCreatedAt()).isEqualTo(created);
+        assertThat(edited.getUpdatedAt()).isAfter(firstUpdate);
     }
 }

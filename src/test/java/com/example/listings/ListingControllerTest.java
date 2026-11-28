@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -385,5 +386,29 @@ class ListingControllerTest {
         mvc.perform(get("/listings").param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.size").value("size must be between 1 and 100"));
+    }
+
+    @Test
+    void clientsCannotSetTheTimestampsButSeeThemInResponses() throws Exception {
+        List<Listing> passedToSave = new ArrayList<>();
+        when(repository.save(any(Listing.class))).thenAnswer(inv -> {
+            Listing l = inv.getArgument(0);
+            passedToSave.add(l);
+            Listing saved = listing(l.getAddress(), l.getMonthlyRent(), l.getBedrooms());
+            saved.setId(9L);
+            saved.setCreatedAt(Instant.parse("2026-11-27T15:00:00Z"));
+            saved.setUpdatedAt(Instant.parse("2026-11-27T15:00:00Z"));
+            return saved;
+        });
+
+        mvc.perform(post("/listings").contentType(MediaType.APPLICATION_JSON).content(
+                        "{\"address\":\"1 Nicholas St\",\"monthlyRent\":800,\"bedrooms\":1,"
+                        + "\"createdAt\":\"2001-01-01T00:00:00Z\",\"updatedAt\":\"2001-01-01T00:00:00Z\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdAt").value("2026-11-27T15:00:00Z"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-11-27T15:00:00Z"));
+
+        assertThat(passedToSave.get(0).getCreatedAt()).isNull();
+        assertThat(passedToSave.get(0).getUpdatedAt()).isNull();
     }
 }
