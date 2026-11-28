@@ -8,6 +8,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 // Runs the real filter queries against the in-memory H2 database,
@@ -104,5 +106,13 @@ class ListingRepositoryTest {
     @Test
     void blankSearchIsIgnored() {
         assertThat(repository.findAll(ListingSpecs.matching(null, null, "   "))).hasSize(5);
+    }
+
+    @Test
+    void pagingAFilteredQueryCountsEveryMatch() {
+        Page<Listing> page = repository.findAll(ListingSpecs.matching(1500, null, null),
+                PageRequest.of(1, 2, Sort.by("monthlyRent")));
+        assertThat(page.getTotalElements()).isEqualTo(4);
+        assertThat(addresses(page.getContent())).containsExactly("340 Gloucester St", "200 Rideau St");
     }
 }

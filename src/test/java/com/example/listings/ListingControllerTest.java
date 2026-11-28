@@ -21,6 +21,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.MediaType;
@@ -331,5 +334,56 @@ class ListingControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(8));
         assertThat(idsPassedToSave).containsExactly((Long) null);
+    }
+
+    @Test
+    void withoutPagingEveryListingComesBackWithTheTotal() throws Exception {
+        when(repository.findAll(anySpec(), any(Sort.class))).thenReturn(List.of(
+                listing("75 Laurier Ave E", 950, 1),
+                listing("200 Rideau St", 1400, 2)));
+
+        mvc.perform(get("/listings"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Total-Count", "2"))
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void pageAndSizeReturnOnePageAndTheOverallTotal() throws Exception {
+        Sort cheapestFirst = Sort.by("monthlyRent").and(Sort.by("id"));
+        PageRequest secondPage = PageRequest.of(1, 2, cheapestFirst);
+        when(repository.findAll(anySpec(), eq((Pageable) secondPage))).thenReturn(new PageImpl<>(
+                List.of(listing("340 Gloucester St", 1000, 3), listing("200 Rideau St", 1400, 2)),
+                secondPage, 5));
+
+        mvc.perform(get("/listings").param("page", "1").param("size", "2").param("sort", "rent"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Total-Count", "5"))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].address").value("340 Gloucester St"));
+    }
+
+    @Test
+    void sizeAloneStartsAtTheFirstPageAndPageAloneUsesTwenty() throws Exception {
+        when(repository.findAll(anySpec(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        mvc.perform(get("/listings").param("size", "5")).andExpect(status().isOk());
+        verify(repository).findAll(anySpec(), eq((Pageable) PageRequest.of(0, 5, Sort.by("id"))));
+
+        mvc.perform(get("/listings").param("page", "2")).andExpect(status().isOk());
+        verify(repository).findAll(anySpec(), eq((Pageable) PageRequest.of(2, 20, Sort.by("id"))));
+    }
+
+    @Test
+    void badPagingValuesAreRejected() throws Exception {
+        mvc.perform(get("/listings").param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.page").value("page cannot be negative"));
+        mvc.perform(get("/listings").param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.size").value("size must be between 1 and 100"));
+        mvc.perform(get("/listings").param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.size").value("size must be between 1 and 100"));
     }
 }
