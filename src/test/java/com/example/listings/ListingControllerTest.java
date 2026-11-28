@@ -267,7 +267,7 @@ class ListingControllerTest {
     void unknownSortIsRejected() throws Exception {
         mvc.perform(get("/listings").param("sort", "address"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.sort").value("sort must be rent or -rent"));
+                .andExpect(jsonPath("$.errors.sort").value("sort must be rent, -rent or newest"));
     }
 
     @Test
@@ -410,5 +410,15 @@ class ListingControllerTest {
 
         assertThat(passedToSave.get(0).getCreatedAt()).isNull();
         assertThat(passedToSave.get(0).getUpdatedAt()).isNull();
+    }
+
+    @Test
+    void sortNewestAsksForTheMostRecentlyAddedFirst() throws Exception {
+        Sort newestFirst = Sort.by(Sort.Order.desc("createdAt").nullsLast(), Sort.Order.desc("id"));
+        when(repository.findAll(anySpec(), eq(newestFirst))).thenReturn(List.of(listing("1 Nicholas St", 800, 1)));
+
+        mvc.perform(get("/listings").param("sort", "newest"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].address").value("1 Nicholas St"));
     }
 }

@@ -139,4 +139,14 @@ class ListingRepositoryTest {
         assertThat(edited.getCreatedAt()).isEqualTo(created);
         assertThat(edited.getUpdatedAt()).isAfter(firstUpdate);
     }
+
+    @Test
+    void newestSortPutsTheLatestListingFirst() throws InterruptedException {
+        Thread.sleep(20);
+        repository.saveAndFlush(listing("1 Nicholas St", 800, 1));
+
+        List<Listing> newestFirst = repository.findAll(
+                Sort.by(Sort.Order.desc("createdAt").nullsLast(), Sort.Order.desc("id")));
+        assertThat(newestFirst.get(0).getAddress()).isEqualTo("1 Nicholas St");
+    }
 }

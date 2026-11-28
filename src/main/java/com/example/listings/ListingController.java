@@ -43,14 +43,15 @@ public class ListingController {
     // Both filters are optional and can be combined:
     // GET /listings?maxRent=1000&minBedrooms=2&q=laurier
     // q matches any listing whose address contains the text, ignoring case.
-    // sort=rent lists the cheapest first, sort=-rent the most expensive first.
+    // sort=rent lists the cheapest first, sort=-rent the most expensive first,
+    // sort=newest the most recently added first.
     // page and size (default 20, max 100) return one page at a time.
     @GetMapping
     public ResponseEntity<List<Listing>> getListings(
             @RequestParam(required = false) @Min(value = 0, message = "maxRent cannot be negative") Integer maxRent,
             @RequestParam(required = false) @Min(value = 0, message = "minBedrooms cannot be negative") Integer minBedrooms,
             @RequestParam(required = false) @Size(max = 100, message = "q must be at most 100 characters") String q,
-            @RequestParam(required = false) @Pattern(regexp = "-?rent", message = "sort must be rent or -rent") String sort,
+            @RequestParam(required = false) @Pattern(regexp = "-?rent|newest", message = "sort must be rent, -rent or newest") String sort,
             @RequestParam(required = false) @Min(value = 0, message = "page cannot be negative") Integer page,
             @RequestParam(required = false) @Min(value = 1, message = "size must be between 1 and " + MAX_PAGE_SIZE)
                     @Max(value = MAX_PAGE_SIZE, message = "size must be between 1 and " + MAX_PAGE_SIZE) Integer size){
@@ -77,6 +78,10 @@ public class ListingController {
     private static Sort toSort(String sort){
         if (sort == null){
             return Sort.by("id");
+        }
+        if (sort.equals("newest")){
+            // Listings saved before timestamps existed have no createdAt; id keeps them in order.
+            return Sort.by(Sort.Order.desc("createdAt").nullsLast(), Sort.Order.desc("id"));
         }
         Sort byRent = sort.startsWith("-") ? Sort.by("monthlyRent").descending() : Sort.by("monthlyRent");
         return byRent.and(Sort.by("id"));
