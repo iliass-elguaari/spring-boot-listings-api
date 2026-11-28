@@ -28,8 +28,9 @@ function demoSave(list) {
 
 // ---- API calls with demo fallback ----
 // filters: { maxRent, minBedrooms } (each a number or null), q (address search text)
-// and sort ("", "rent" or "-rent")
-async function fetchListings(filters) {
+// and sort ("", "rent" or "-rent"). Returns one page: { items, total }.
+const PAGE_SIZE = 10;
+async function fetchListings(filters, page) {
   const { maxRent, minBedrooms, q, sort } = filters;
   if (!demo) {
     try {
@@ -38,10 +39,16 @@ async function fetchListings(filters) {
       if (minBedrooms != null) params.set("minBedrooms", minBedrooms);
       if (q) params.set("q", q);
       if (sort) params.set("sort", sort);
-      const url = params.toString() ? `${API}?${params}` : API;
+      params.set("page", page);
+      params.set("size", PAGE_SIZE);
+      const url = `${API}?${params}`;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       const type = res.headers.get("content-type") || "";
-      if (res.ok && type.includes("application/json")) return await res.json();
+      if (res.ok && type.includes("application/json")) {
+        const items = await res.json();
+        const total = Number(res.headers.get("X-Total-Count") ?? items.length);
+        return { items, total };
+      }
       throw new Error("no api");
     } catch (_) {
       demo = true;
@@ -54,8 +61,9 @@ async function fetchListings(filters) {
     (minBedrooms == null || l.bedrooms >= minBedrooms));
   // Same order as the API: by rent when asked, ties and the default by id.
   const dir = sort === "-rent" ? -1 : 1;
-  return matches.sort((a, b) =>
+  matches.sort((a, b) =>
     (sort ? dir * (a.monthlyRent - b.monthlyRent) : 0) || a.id - b.id);
+  return { items: matches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), total: matches.length };
 }
 
 // Error carrying the API's per-field messages, e.g. { monthlyRent: "monthlyRent cannot be negative" }
@@ -131,7 +139,7 @@ function startEdit(listing) {
   $("form-error").textContent = "";
   showFieldErrors(null);
   f.address.focus();
-  render();
+  drawList(shown); // just highlight the row, keeping any extra pages loaded
 }
 
 function stopEdit() {
@@ -147,15 +155,32 @@ function stopEdit() {
 
 // ---- rendering ----
 
+// Listings loaded so far and how many match in total, for "Load more".
+let shown = [];
+let total = 0;
+let page = 0;
+
+// Starts over from the first page, e.g. after a filter change or a save.
 async function render() {
+  page = 0;
+  await loadPage(false);
+}
+
+async function loadPage(append) {
   $("list-error").textContent = "";
-  let list;
+  let result;
   try {
-    list = await fetchListings(filters);
+    result = await fetchListings(filters, page);
   } catch (e) {
     $("list-error").textContent = e.message;
     return;
   }
+  shown = append ? shown.concat(result.items) : result.items;
+  total = result.total;
+  drawList(shown);
+}
+
+function drawList(list) {
   const ul = $("listings");
   ul.replaceChildren();
   for (const l of list) {
@@ -196,8 +221,11 @@ async function render() {
     li.append(info, right);
     ul.append(li);
   }
-  $("count").textContent = `(${list.length})`;
+  $("count").textContent = `(${total})`;
   $("empty").hidden = list.length > 0;
+  const more = $("load-more");
+  more.hidden = list.length >= total;
+  more.textContent = `Load more (${total - list.length} left)`;
 }
 
 $("add-form").addEventListener("submit", async (e) => {
@@ -268,6 +296,11 @@ $("search").addEventListener("input", (e) => {
     filters = { ...filters, q: e.target.value.trim() };
     render();
   }, 250);
+});
+
+$("load-more").addEventListener("click", () => {
+  page += 1;
+  loadPage(true);
 });
 
 render();

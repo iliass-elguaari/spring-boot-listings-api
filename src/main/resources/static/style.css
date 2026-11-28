@@ -70,6 +70,8 @@ button.ghost:hover { color: var(--text); }
 .filter label.sort { width: 150px; }
 .count { color: var(--muted); font-weight: 400; }
 .search { margin: 14px 0 8px; }
+.load-more { display: block; width: 100%; margin-top: 12px; }
+.load-more[hidden] { display: none; }
 .listings { list-style: none; padding: 0; margin: 0; }
 .listings li {
   display: flex;
