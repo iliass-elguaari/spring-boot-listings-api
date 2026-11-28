@@ -3,7 +3,10 @@ package com.example.listings;
 import java.net.URI;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -24,6 +28,10 @@ import jakarta.validation.constraints.Size;
 @RestController 
 @RequestMapping("/listings")
 public class ListingController {
+
+    static final String TOTAL_COUNT_HEADER = "X-Total-Count";
+    static final int DEFAULT_PAGE_SIZE = 20;
+    static final int MAX_PAGE_SIZE = 100;
 
     private final ListingRepository repository;
 
@@ -36,13 +44,33 @@ public class ListingController {
     // GET /listings?maxRent=1000&minBedrooms=2&q=laurier
     // q matches any listing whose address contains the text, ignoring case.
     // sort=rent lists the cheapest first, sort=-rent the most expensive first.
+    // page and size (default 20, max 100) return one page at a time.
     @GetMapping
-    public List<Listing> getListings(
+    public ResponseEntity<List<Listing>> getListings(
             @RequestParam(required = false) @Min(value = 0, message = "maxRent cannot be negative") Integer maxRent,
             @RequestParam(required = false) @Min(value = 0, message = "minBedrooms cannot be negative") Integer minBedrooms,
             @RequestParam(required = false) @Size(max = 100, message = "q must be at most 100 characters") String q,
-            @RequestParam(required = false) @Pattern(regexp = "-?rent", message = "sort must be rent or -rent") String sort){
-        return repository.findAll(ListingSpecs.matching(maxRent, minBedrooms, q), toSort(sort));
+            @RequestParam(required = false) @Pattern(regexp = "-?rent", message = "sort must be rent or -rent") String sort,
+            @RequestParam(required = false) @Min(value = 0, message = "page cannot be negative") Integer page,
+            @RequestParam(required = false) @Min(value = 1, message = "size must be between 1 and " + MAX_PAGE_SIZE)
+                    @Max(value = MAX_PAGE_SIZE, message = "size must be between 1 and " + MAX_PAGE_SIZE) Integer size){
+        Specification<Listing> filters = ListingSpecs.matching(maxRent, minBedrooms, q);
+        Sort order = toSort(sort);
+
+        // Without page or size the whole (filtered) list comes back, as before.
+        if (page == null && size == null){
+            List<Listing> all = repository.findAll(filters, order);
+            return withTotal(all.size(), all);
+        }
+        PageRequest request = PageRequest.of(page == null ? 0 : page, size == null ? DEFAULT_PAGE_SIZE : size, order);
+        Page<Listing> result = repository.findAll(filters, request);
+        return withTotal(result.getTotalElements(), result.getContent());
+    }
+
+    // X-Total-Count tells the client how many listings match in total,
+    // so it knows whether there is another page to load.
+    private static ResponseEntity<List<Listing>> withTotal(long total, List<Listing> listings){
+        return ResponseEntity.ok().header(TOTAL_COUNT_HEADER, String.valueOf(total)).body(listings);
     }
 
     // Ties on rent fall back to id so the order is stable between requests.
