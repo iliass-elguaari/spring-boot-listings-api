@@ -16,10 +16,12 @@ function demoLoad() {
     const saved = JSON.parse(localStorage.getItem(DEMO_KEY));
     if (Array.isArray(saved)) return saved;
   } catch (_) { /* ignore */ }
+  // Sample listings, dated a few days back so "Added" and "Newest first" have something to show.
+  const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString();
   return [
-    { id: 1, address: "75 Laurier Ave E, Ottawa", monthlyRent: 950, bedrooms: 1 },
-    { id: 2, address: "200 Rideau St, Ottawa", monthlyRent: 1400, bedrooms: 2 },
-    { id: 3, address: "45 Mann Ave, Ottawa", monthlyRent: 780, bedrooms: 1 },
+    { id: 1, address: "75 Laurier Ave E, Ottawa", monthlyRent: 950, bedrooms: 1, createdAt: daysAgo(6) },
+    { id: 2, address: "200 Rideau St, Ottawa", monthlyRent: 1400, bedrooms: 2, createdAt: daysAgo(3) },
+    { id: 3, address: "45 Mann Ave, Ottawa", monthlyRent: 780, bedrooms: 1, createdAt: daysAgo(1) },
   ];
 }
 function demoSave(list) {
@@ -28,7 +30,7 @@ function demoSave(list) {
 
 // ---- API calls with demo fallback ----
 // filters: { maxRent, minBedrooms } (each a number or null), q (address search text)
-// and sort ("", "rent" or "-rent"). Returns one page: { items, total }.
+// and sort ("", "rent", "-rent" or "newest"). Returns one page: { items, total }.
 const PAGE_SIZE = 10;
 async function fetchListings(filters, page) {
   const { maxRent, minBedrooms, q, sort } = filters;
@@ -59,10 +61,15 @@ async function fetchListings(filters, page) {
     (!q || l.address.toLowerCase().includes(q.toLowerCase())) &&
     (maxRent == null || l.monthlyRent <= maxRent) &&
     (minBedrooms == null || l.bedrooms >= minBedrooms));
-  // Same order as the API: by rent when asked, ties and the default by id.
-  const dir = sort === "-rent" ? -1 : 1;
-  matches.sort((a, b) =>
-    (sort ? dir * (a.monthlyRent - b.monthlyRent) : 0) || a.id - b.id);
+  // Same order as the API: by rent or newest when asked, ties and the default by id.
+  const time = (l) => (l.createdAt ? Date.parse(l.createdAt) : -Infinity);
+  if (sort === "newest") {
+    matches.sort((a, b) => (time(b) - time(a)) || b.id - a.id);
+  } else {
+    const dir = sort === "-rent" ? -1 : 1;
+    matches.sort((a, b) =>
+      (sort ? dir * (a.monthlyRent - b.monthlyRent) : 0) || a.id - b.id);
+  }
   return { items: matches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), total: matches.length };
 }
 
@@ -80,11 +87,12 @@ async function saveListing(listing, id) {
     const all = demoLoad();
     if (id == null) {
       const newId = all.reduce((m, l) => Math.max(m, l.id), 0) + 1;
-      all.push({ id: newId, ...listing });
+      const now = new Date().toISOString();
+      all.push({ id: newId, ...listing, createdAt: now, updatedAt: now });
     } else {
       const i = all.findIndex((l) => l.id === id);
       if (i === -1) throw new Error("That listing no longer exists.");
-      all[i] = { id, ...listing };
+      all[i] = { ...all[i], ...listing, id, updatedAt: new Date().toISOString() };
     }
     demoSave(all);
     return;
@@ -155,6 +163,14 @@ function stopEdit() {
 
 // ---- rendering ----
 
+// "Nov 27", or "Nov 27, 2025" when it isn't this year.
+function addedOn(iso) {
+  const d = new Date(iso);
+  const opts = { month: "short", day: "numeric" };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString("en-CA", opts);
+}
+
 // Listings loaded so far and how many match in total, for "Load more".
 let shown = [];
 let total = 0;
@@ -191,7 +207,8 @@ function drawList(list) {
     addr.textContent = l.address;
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = `${l.bedrooms} bedroom${l.bedrooms === 1 ? "" : "s"}`;
+    const beds = `${l.bedrooms} bedroom${l.bedrooms === 1 ? "" : "s"}`;
+    meta.textContent = l.createdAt ? `${beds} · Added ${addedOn(l.createdAt)}` : beds;
     info.append(addr, meta);
 
     const right = document.createElement("div");
