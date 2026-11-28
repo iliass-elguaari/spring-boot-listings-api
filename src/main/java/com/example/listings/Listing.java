@@ -1,5 +1,13 @@
 package com.example.listings;
 
+import java.time.Instant;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,6 +33,17 @@ public class Listing {
 
     @Min(value = 0, message = "bedrooms cannot be negative")
     private int bedrooms;
+
+    // Set by Hibernate when the row is inserted and on every update.
+    // READ_ONLY means clients see them in responses but can't send their own.
+    @CreationTimestamp
+    @Column(updatable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Instant updatedAt;
     
     public Long getId() {
         return id;
@@ -49,6 +68,19 @@ public class Listing {
     }
     public void setBedrooms(int bedrooms) {
         this.bedrooms = bedrooms;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
 }
