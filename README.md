@@ -13,6 +13,7 @@ A small REST API for student housing listings, built to learn Spring Boot and Po
 - `GET /listings?q=laurier` returns listings whose address contains the text, ignoring case (at most 100 characters)
 - All of these combine: `GET /listings?q=rideau&maxRent=1500&minBedrooms=2&sort=-rent`
 - `GET /listings?sort=rent` lists the cheapest first and `sort=-rent` the most expensive first. It works with the filters too: `GET /listings?maxRent=1500&sort=-rent`. Any other value gets `400 Bad Request`
+- `GET /listings?page=0&size=20` returns one page at a time (size 1 to 100; `page` alone uses 20). Without `page` or `size` every match comes back. Either way the `X-Total-Count` header says how many listings match in total, so a client knows whether there's another page
 - `GET /listings/{id}` returns one listing, or `404 Not Found`
 - `PUT /listings/{id}` replaces a listing's address, rent and bedrooms (same validation as `POST`), or `404 Not Found`
 - `DELETE /listings/{id}` removes a listing (`204 No Content`), or `404 Not Found`
@@ -28,7 +29,7 @@ Every bad request gets `400 Bad Request` in the same format, with one message pe
 | --- | --- | --- |
 | Missing or too long address (max 200 characters) | `"address": ""` | `address` |
 | Negative rent or bedrooms | `"bedrooms": -1` | `monthlyRent`, `bedrooms` |
-| Negative filter | `?maxRent=-5` | `maxRent`, `minBedrooms` |
+| Negative filter or page, or a page size outside 1 to 100 | `?maxRent=-5`, `?size=500` | `maxRent`, `minBedrooms`, `page`, `size` |
 | Number field that isn't a number | `?maxRent=abc`, `/listings/abc` | `maxRent`, `minBedrooms`, `id` |
 | Unknown sort or search over 100 characters | `?sort=address` | `sort`, `q` |
 | Body that isn't valid JSON | `{"address": ` | `body` |
@@ -36,7 +37,7 @@ Every bad request gets `400 Bad Request` in the same format, with one message pe
 All of this lives in `ApiErrorHandler`, a `@RestControllerAdvice` shared by every endpoint.
 
 ## Front end
-A small web page in `src/main/resources/static` lets you browse listings, search by address as you type, filter by max rent and minimum bedrooms, sort by rent, post, edit and delete listings. Validation errors from the API show up under the field they belong to.
+A small web page in `src/main/resources/static` lets you browse listings, search by address as you type, filter by max rent and minimum bedrooms, sort by rent, load results 10 at a time, post, edit and delete listings. Validation errors from the API show up under the field they belong to.
 - **With the API running**, open `localhost:8080` and it reads and writes the real Postgres database.
 - **Live demo:** https://iliass-elguaari.github.io/spring-boot-listings-api/ runs the same page without a server. It switches to demo mode and keeps listings in your browser.
 
